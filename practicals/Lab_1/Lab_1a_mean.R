@@ -1,20 +1,23 @@
 # cleanup
-rm(list=ls()); gc(); cat("\014"); try(dev.off(), silent=T)
+rm(list = ls())
+gc()
+cat("\014")
+try(dev.off(), silent = T)
 
 # check working directory
+# (it should be .../bayesian_intro/practicals/Lab_1)
 getwd()
 
-# [optional] set different working directory
-# setwd('mypath')
+# [optional] update/fix working directory
+# setwd(file.path(getwd(), 'practicals', 'Lab_1'))
 
 # directories
 outdir <- file.path(getwd(), 'out')
-dir.create(outdir, showWarnings=F, recursive=T)
+dir.create(outdir, showWarnings = F, recursive = T)
 
 # set seed for random number generators (important for reproducibility)
 seed <- round(runif(1, 1, 1e6))
 set.seed(seed)
-
 
 
 #---- SECTION 1: Simulate data ----#
@@ -30,9 +33,7 @@ sigma <- 3
 
 # simulate data by drawing random samples from a normal distribution
 # note:  this distribution should be the same as the likelihood that you will use in your model
-y <- rnorm(n = n,
-           mean = mu,
-           sd = sigma)
+y <- rnorm(n = n, mean = mu, sd = sigma)
 
 # summary statistics of data
 mean(y)
@@ -47,18 +48,10 @@ plot(density(y))
 rug(y)
 
 # format data as a list (required by stan)
-md <- list(n = n,
-           y = y, 
-           mu_true = mu,
-           sigma_true = sigma,
-           seed = seed) # important to set and save seed for reproducibility
+md <- list(n = n, y = y, mu_true = mu, sigma_true = sigma, seed = seed) # important to set and save seed for reproducibility
 
 # save data to disk
-saveRDS(object = md,
-        file = file.path(outdir, 'md_mean.rds'))
-
-
-
+saveRDS(object = md, file = file.path(outdir, 'md_mean.rds'))
 
 
 #---- SECTION 2: MCMC for Bayesian model ----#
@@ -81,37 +74,36 @@ mod$exe_file()
 mod$print()
 
 
-
 # function to generate initial values for each parameter in the model
-init_generator <- function(md=md, chain_id=1){
+init_generator <- function(md = md, chain_id = 1) {
   result <- list()
-  
+
   result[['mu']] <- runif(1, -1e3, 1e3)
   result[['sigma']] <- runif(1, 0, 1e3)
-  
+
   return(result)
 }
-
 
 
 # MCMC configuration
 chains <- 4
 warmup <- 1e3
 samples <- 2e3
-inits <- lapply(1:chains, function(id) init_generator(md=md, chain_id=id))
+inits <- lapply(1:chains, function(id) init_generator(md = md, chain_id = id))
 
 # run MCMC to sample from the posterior distribution of our model, given our data
-fit <- mod$sample(data = md,
-                  parallel_chains = chains,
-                  init = inits,
-                  iter_sampling = samples,
-                  iter_warmup = warmup,
-                  save_warmup = TRUE,
-                  seed = md$seed)
+fit <- mod$sample(
+  data = md,
+  parallel_chains = chains,
+  init = inits,
+  iter_sampling = samples,
+  iter_warmup = warmup,
+  save_warmup = TRUE,
+  seed = md$seed
+)
 
 # save fitted model to disk
-fit$save_object(file=file.path(outdir, 'fit_mean.rds'))
-
+fit$save_object(file = file.path(outdir, 'fit_mean.rds'))
 
 
 #---- SECTION 3: Model diagnostics ----#
@@ -123,19 +115,20 @@ fit <- readRDS(file.path(outdir, 'fit_mean.rds'))
 ## MCMC diagnostics
 
 # extract MCMC draws as data frame
-fit$draws(format='df')
+fit$draws(format = 'df')
 
 # extract MCMC draws as an array (dimensions = iterations x chains x variables)
 fit$draws()
 
 # traceplots to visually inspect MCMC chains
-bayesplot::mcmc_trace(fit$draws(), 
-                      pars = c('mu', 'sigma'))
+bayesplot::mcmc_trace(fit$draws(), pars = c('mu', 'sigma'))
 
 # check to make sure the warmup period was long enough
-bayesplot::mcmc_trace(fit$draws(inc_warmup=TRUE), 
-                      pars = c('mu', 'sigma'), 
-                      n_warmup = warmup)
+bayesplot::mcmc_trace(
+  fit$draws(inc_warmup = TRUE),
+  pars = c('mu', 'sigma'),
+  n_warmup = warmup
+)
 
 
 # MCMC convergence diagnostics; rhat=1 means the chains converged
@@ -167,21 +160,18 @@ mean(fit$draws('mu'))
 mean(fit$draws('sigma'))
 
 # manually calculate 95% credible intervals of parameter estimates from MCMC draws
-quantile(fit$draws('mu'), probs=c(0.025, 0.975))
-quantile(fit$draws('sigma'), probs=c(0.025, 0.975))
+quantile(fit$draws('mu'), probs = c(0.025, 0.975))
+quantile(fit$draws('sigma'), probs = c(0.025, 0.975))
 
 
 # visualise marginal posterior distributions for parameters as density plots
-bayesplot::mcmc_areas(fit$draws('mu'), prob=0.95)
-bayesplot::mcmc_areas(fit$draws('sigma'), prob=0.95)
+bayesplot::mcmc_areas(fit$draws('mu'), prob = 0.95)
+bayesplot::mcmc_areas(fit$draws('sigma'), prob = 0.95)
 
-bayesplot::mcmc_areas(fit$draws(), pars=c('mu', 'sigma'), prob=0.95)
+bayesplot::mcmc_areas(fit$draws(), pars = c('mu', 'sigma'), prob = 0.95)
 
 # ... as histograms
 bayesplot::mcmc_hist(fit$draws('mu'))
 bayesplot::mcmc_hist(fit$draws('sigma'))
 
-bayesplot::mcmc_hist(fit$draws(), pars=c('mu', 'sigma'))
-
-
-
+bayesplot::mcmc_hist(fit$draws(), pars = c('mu', 'sigma'))
