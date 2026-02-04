@@ -25,7 +25,15 @@ Students will have the opportunity to schedule a follow-up Bayesian surgery appo
 with the course instructor to answer burning questions that remain and/or to troubleshoot
 technical challenges related to their own research applications.  
 
-#### Pre-requisites 
+## Repository Organisation   
+
+This repository contains the following materials:  
+
+1. [Reading materials](./reading)
+2. [Slides for lectures](./lectures)  
+3. [Practical coding exercises](./practicals)
+
+## Pre-Requisites  
 Students will need good programming skills in R and a basic understanding
 of linear regression to be successful in this course. 
 
@@ -33,12 +41,6 @@ You will need to install the following free open-source software prior to doing 
 
 - R and <a href="https://posit.co/download/rstudio-desktop/" target="_blank">RStudio</a> or <a href="https://positron.posit.co/" target="_blank">Positron</a> (or your favourite R IDE)   
 - <a href="https://mc-stan.org/cmdstanr/articles/cmdstanr.html" target="_blank">CmdStanR and its dependencies</a>
-
-## Introductory and Further Reading   
-
-- <a href="https://github.com/rmcelreath/stat_rethinking_2024" target="_blank">Statistical Rethinking Lectures</a> (and book) by Richard McElreath  
-- <a href="https://mc-stan.org/learn-stan/tutorials.html" target="_blank">Introductory Stan tutorials, videos, and podcasts</a>  
-- <a href="https://www.bayesrulesbook.com/" target="_blank">Bayes Rules!</a> by Johnson, Ott, and Dogucu.  
 
 ## License
 This repository is dual-licensed under MIT (code) and CC BY 4.0 (teaching materials). See the LICENSE file for details.
