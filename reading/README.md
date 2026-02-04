@@ -16,8 +16,6 @@
 - <a href="https://mc-stan.org/learn-stan/case-studies.html#volume-5-2018" target="_blank">Stan Case Studies</a>  
 - <a href="https://mc-stan.org/" target="_blank">Stan website</a> (collects all of the above together, with some deeper-dive materials as well)  
 
-## Cheat Sheets
-These are concise reference materials with key information about various probability distributions and deterministic functions that can be helpful when designing your own models. 
 
 ## Books  
 
@@ -29,4 +27,10 @@ These are concise reference materials with key information about various probabi
 
 ## Papers  
 
-We have put together a few papers that were particularly useful and/or interesting to us. These are organised in `./reading/papers/` into "fundamentals" and "case studies". The papers on fundamentals cover the Bayesian workflow, model checking, specifying priors, model selection, and others. The case study papers provide examples of Bayesian analyses that were particularly interesting to us and relevant to some of the concepts discussed in the course.  
+We put together a few papers that were particularly useful and/or interesting to us. These are organised in `./reading/papers/` into "fundamentals" and "case studies". The papers on fundamentals cover the Bayesian workflow, model checking, specifying priors, model selection, and others. The case study papers provide examples of Bayesian analyses that were particularly interesting to us and relevant to some of the concepts discussed in the course.  
+
+
+## Cheat Sheets
+These are concise reference materials with key information about various probability distributions and deterministic functions that can be helpful when designing your own models. 
+
+
