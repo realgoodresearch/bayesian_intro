@@ -40,6 +40,9 @@ color_scheme_set("brightblue")
 # check CmdStan toolchain is available
 check_cmdstan_toolchain()
 
+# if needed, download and run the Rtools45 installer from here: 
+# https://cran.rstudio.com/bin/windows/Rtools/rtools45/rtools.html
+
 # install CmdStan
 install_cmdstan(cores = 2)
 
