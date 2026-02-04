@@ -34,12 +34,12 @@ You will need to install the following free open-source software prior to doing 
 - R and <a href="https://posit.co/download/rstudio-desktop/" target="_blank">RStudio</a> or <a href="https://positron.posit.co/" target="_blank">Positron</a> (or your favourite R IDE)   
 - <a href="https://mc-stan.org/cmdstanr/articles/cmdstanr.html" target="_blank">CmdStanR and its dependencies</a>
 
-# Introductory and Further Reading   
+## Introductory and Further Reading   
 
 - <a href="https://github.com/rmcelreath/stat_rethinking_2024" target="_blank">Statistical Rethinking Lectures</a> (and book) by Richard McElreath  
 - <a href="https://mc-stan.org/learn-stan/tutorials.html" target="_blank">Introductory Stan tutorials, videos, and podcasts</a>  
 - <a href="https://www.bayesrulesbook.com/" target="_blank">Bayes Rules!</a> by Johnson, Ott, and Dogucu.  
 
-# License
+## License
 This repository is dual-licensed under MIT (code) and CC BY 4.0 (teaching materials). See the LICENSE file for details.
 
