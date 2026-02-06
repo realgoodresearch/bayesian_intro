@@ -11,6 +11,6 @@ model {
   y ~ normal(mu, sigma);
   
   // priors
-  mu ~ normal(10, 0.1); // default N(0,100)
+  mu ~ normal(0, 100); // default N(0,100)
   sigma ~ uniform(0, 1e4);
 }

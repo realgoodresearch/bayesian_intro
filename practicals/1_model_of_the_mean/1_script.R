@@ -27,7 +27,7 @@ set.seed(seed)
 #---- SECTION 1: Simulate data ----#
 
 # define the sample size
-n <- 1e2
+n <- 1e3
 
 # define the mean value
 mu <- 5
@@ -188,9 +188,9 @@ myplot(
   fit = fit,
   md = md,
   par = "mu",
-  xlim = c(4, 12), # lower and upper x-axis values for the plot
-  prior_mean = 10, # match the mean of the prior on mu in 1_model.stan
-  prior_sd = 1 # match the sd of the prior on mu in 1_model.stan
+  xlim = c(3, 7), # lower and upper x-axis values for the plot
+  prior_mean = 0, # match the mean of the prior on mu in 1_model.stan
+  prior_sd = 1000 # match the sd of the prior on mu in 1_model.stan
 )
 
 # Does the likelihood estimate match the Bayesian posterior estimate?
