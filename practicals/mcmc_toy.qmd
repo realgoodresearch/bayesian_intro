@@ -1,0 +1,129 @@
+---
+title: "A toy MCMC example"
+author: "Michael Chong"
+date: "February 6, 2026"
+format: html
+---
+
+## The idea
+
+* binary coin flip outcome ($y = 0$ or $y=1$)
+* coin might be biased: $y=1$ with probability $\theta$
+* coin can only be fair, or biased in one way: either $\theta = 0.9$ or $\theta = 0.5$
+* you believe a priori that it is unlikely you have a biased coin: $P(\theta = 0.9) = 0.3$ and $P(\theta = 0.5) = 0.7$ 
+
+## The posterior
+
+Imagine you observe $y=1$.
+
+We can calculate all the components of the posterior according to Bayes rule:
+
+* likelihood: 
+  * $p(y=1|\theta = 0.9) = 0.9$
+  * $p(y=1|\theta = 0.5) = 0.5$
+* priors: see above
+* the scaling factor ($p(y) = \sum_\theta p(y|\theta) p(\theta)$)
+  * $(0.9 \times 0.3) + (0.5 \times 0.7) = 0.27 + 0.35 = 0.62$
+  
+So the posterior $p(\theta|y)$ is:
+
+* $p(\theta =0.5| y) = \frac{0.5\times 0.7}{0.62} \approx  0.564$
+* $p(\theta =0.9| y) = \frac{0.9\times 0.3}{0.62} \approx  0.435$
+
+## MCMC quantities
+
+We need a few things for basic MCMC: 1. proposal distribution and 2. the acceptance probabilities. 
+
+For the proposal distribution, denote the current iteration as $\theta_k$ and the proposed next iteration as $\theta^*$. Construct the proposal distribution such that we always propose the _other_ value of $\theta$. Write $p(\theta^* | \theta_k)$ as:
+$$
+j(\theta^* | \theta_k) = 
+\begin{cases}
+1 & \text{if } \theta^* \not = \theta_k \\
+0 & \text{otherwise}.
+\end{cases}
+$$
+(Technical note: this proposal distribution is symmmetrical in the sense that $j(y|x) = j(x|y)$, so we're in the plain Metropolis regime (not Metropolis-Hastings))
+
+Our acceptance probabilities can be calculated:
+$$
+R(0.5 \rightarrow 0.9) = \min \left\{1,  \frac{p(y=1|\theta = 0.9)p(\theta=0.9)}{p(y=1|\theta = 0.5)p(\theta=0.5)}\right\} = \min \left\{1, \frac{0.9 \times 0.3}{0.5 \times 0.7 } \right\} = \min\{1, 0.7714...\} = 0.7714...
+$$
+and
+$$
+R(0.9 \rightarrow 0.5) = \min \left\{1, \frac{0.5 \times 0.7 }{0.9 \times 0.3} \right\} = 1
+$$
+So we _always_ move from 0.9 to 0.5, but only sometimes move from 0.5 to 0.9.
+
+## Simulation 
+
+```{r}
+library(tidyverse)
+
+real_posterior <- tibble(theta = c(0.5, 0.9), p = c(0.35/0.62, 0.27/0.62))
+
+set.seed(12345)
+
+# initialize
+current_theta <- 0.5
+theta_samples <- c()
+
+K <- 10000
+for (k in 1:K) {
+  
+  # keep track of last value of theta for plotting later
+  last_theta <- current_theta
+  
+  # MCMC part ---------- 
+  if (current_theta == 0.9) {
+    
+    # always transition to higher probability state
+    current_theta <- 0.5
+    
+  } else if (current_theta == 0.5) {
+    
+    # transition to lower probability state with probability = ratio:
+    tr_or_not <- rbinom(1, 1, prob = 0.27/0.35)
+
+    if (tr_or_not) {
+      # transition success
+      current_theta <- 0.9
+    } else {
+      # do not transition (stay put)
+      current_theta <- current_theta 
+    }
+    
+  }
+  
+  # collect current theta sample
+  theta_samples <- c(theta_samples, current_theta)
+  
+  # end of MCMC part------------
+  
+  # just plotting
+  if (k %in% c(1:6, 100, 1000, 10000)) {
+    
+    current_tabulation <- tibble(
+      theta = c(0.5, 0.9),
+      p = c(
+        sum(theta_samples == 0.5) / length(theta_samples),
+        sum(theta_samples == 0.9) / length(theta_samples)
+      )
+    )
+    
+    current_plot <- ggplot(current_tabulation, aes(x = theta, y = p)) +
+      geom_col() +
+      geom_point(data = real_posterior, alpha = 0.7, colour = "red") +
+      labs(
+        title = str_c("k = ", k),
+        subtitle = str_c("Last theta: ", last_theta, "; current theta: ", current_theta ))
+    
+    if (last_theta != current_theta) {
+      current_plot <- current_plot +
+        geom_segment(x = last_theta, xend = current_theta, y = 0, colour = "blue", arrow = arrow(length = unit(.4, "cm"), type = "closed")) 
+    }
+    
+    print(current_plot)
+  }
+}
+```
+
