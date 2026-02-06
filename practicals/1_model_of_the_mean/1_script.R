@@ -16,6 +16,9 @@ basedir <- file.path(getwd(), "practicals", "1_model_of_the_mean")
 outdir <- file.path(basedir, "results")
 dir.create(outdir, showWarnings = F, recursive = T)
 
+# load function
+source(file.path(basedir, "1_script_fun.R"))
+
 # set seed for random number generators (important for reproducibility)
 seed <- round(runif(1, 1, 1e6))
 set.seed(seed)
@@ -24,7 +27,7 @@ set.seed(seed)
 #---- SECTION 1: Simulate data ----#
 
 # define the sample size
-n <- 1e3
+n <- 1e2
 
 # define the mean value
 mu <- 5
@@ -176,3 +179,21 @@ bayesplot::mcmc_hist(fit$draws("mu"))
 bayesplot::mcmc_hist(fit$draws("sigma"))
 
 bayesplot::mcmc_hist(fit$draws(), pars = c("mu", "sigma"))
+
+
+# ---- check likelihood vs prior vs posterior ---- #
+# note: this is not a standard check, but a useful learning exercise for your first model
+
+myplot(
+  fit = fit,
+  md = md,
+  par = "mu",
+  xlim = c(4, 12), # lower and upper x-axis values for the plot
+  prior_mean = 10, # match the mean of the prior on mu in 1_model.stan
+  prior_sd = 1 # match the sd of the prior on mu in 1_model.stan
+)
+
+# Does the likelihood estimate match the Bayesian posterior estimate?
+# Make a strongly informative prior and re-check if the likelihood matches the posterior.
+# Make the strongly informative prior differ from the simulated "true" values and re-check.
+# Reduce the sample size in the simulated data generation and re-check.
