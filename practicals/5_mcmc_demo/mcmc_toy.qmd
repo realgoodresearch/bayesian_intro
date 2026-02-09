@@ -2,7 +2,9 @@
 title: "A toy MCMC example"
 author: "Michael Chong"
 date: "February 6, 2026"
-format: html
+format: 
+  html:
+    self-contained: true
 ---
 
 ## The idea
@@ -59,7 +61,7 @@ So we _always_ move from 0.9 to 0.5, but only sometimes move from 0.5 to 0.9.
 ```{r}
 library(tidyverse)
 
-real_posterior <- tibble(theta = c(0.5, 0.9), p = c(0.35/0.62, 0.27/0.62))
+real_posterior <- tibble(theta = c(0.5, 0.9), p = c(0.35 / 0.62, 0.27 / 0.62))
 
 set.seed(12345)
 
@@ -69,39 +71,33 @@ theta_samples <- c()
 
 K <- 10000
 for (k in 1:K) {
-  
   # keep track of last value of theta for plotting later
   last_theta <- current_theta
-  
-  # MCMC part ---------- 
+
+  # MCMC part ----------
   if (current_theta == 0.9) {
-    
     # always transition to higher probability state
     current_theta <- 0.5
-    
   } else if (current_theta == 0.5) {
-    
     # transition to lower probability state with probability = ratio:
-    tr_or_not <- rbinom(1, 1, prob = 0.27/0.35)
+    tr_or_not <- rbinom(1, 1, prob = 0.27 / 0.35)
 
     if (tr_or_not) {
       # transition success
       current_theta <- 0.9
     } else {
       # do not transition (stay put)
-      current_theta <- current_theta 
+      current_theta <- current_theta
     }
-    
   }
-  
+
   # collect current theta sample
   theta_samples <- c(theta_samples, current_theta)
-  
+
   # end of MCMC part------------
-  
+
   # just plotting
   if (k %in% c(1:6, 100, 1000, 10000)) {
-    
     current_tabulation <- tibble(
       theta = c(0.5, 0.9),
       p = c(
@@ -109,19 +105,31 @@ for (k in 1:K) {
         sum(theta_samples == 0.9) / length(theta_samples)
       )
     )
-    
+
     current_plot <- ggplot(current_tabulation, aes(x = theta, y = p)) +
       geom_col() +
       geom_point(data = real_posterior, alpha = 0.7, colour = "red") +
       labs(
         title = str_c("k = ", k),
-        subtitle = str_c("Last theta: ", last_theta, "; current theta: ", current_theta ))
-    
+        subtitle = str_c(
+          "Last theta: ",
+          last_theta,
+          "; current theta: ",
+          current_theta
+        )
+      )
+
     if (last_theta != current_theta) {
       current_plot <- current_plot +
-        geom_segment(x = last_theta, xend = current_theta, y = 0, colour = "blue", arrow = arrow(length = unit(.4, "cm"), type = "closed")) 
+        geom_segment(
+          x = last_theta,
+          xend = current_theta,
+          y = 0,
+          colour = "blue",
+          arrow = arrow(length = unit(.4, "cm"), type = "closed")
+        )
     }
-    
+
     print(current_plot)
   }
 }

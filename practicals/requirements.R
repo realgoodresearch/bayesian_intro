@@ -1,13 +1,15 @@
-
 ## install R dependencies
 # (see https://mc-stan.org/cmdstanr/articles/cmdstanr.html)
-
 
 # function to check for packages and install them if missing
 install_if_missing <- function(packages) {
   for (pkg in packages) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
-      message(paste("\n\n---------- Installing package:", pkg, " ----------\n\n"))
+      message(paste(
+        "\n\n---------- Installing package:",
+        pkg,
+        " ----------\n\n"
+      ))
       if (pkg == "cmdstanr") {
         install.packages(
           "cmdstanr",
@@ -25,7 +27,8 @@ pkgs <- c(
   "lme4",
   "cmdstanr",
   "posterior",
-  "bayesplot"
+  "bayesplot",
+  "tidyverse"
 )
 
 # install R packages
@@ -40,7 +43,7 @@ color_scheme_set("brightblue")
 # check CmdStan toolchain is available
 check_cmdstan_toolchain()
 
-# if needed, download and run the Rtools45 installer from here: 
+# if needed, download and run the Rtools45 installer from here:
 # https://cran.rstudio.com/bin/windows/Rtools/rtools45/rtools.html
 
 # install CmdStan
