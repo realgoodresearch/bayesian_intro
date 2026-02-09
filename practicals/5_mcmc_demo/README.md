@@ -1,0 +1,1 @@
+<a href="https://htmlpreview.github.io/?https://github.com/realgoodresearch/bayesian_intro/blob/main/practicals/5_mcmc_demo/mcmc_toy.html" target="_blank">Click to preview the MCMC demo in your browser</a>.
