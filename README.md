@@ -1,7 +1,5 @@
 # bayesian_intro: A primer on Bayesian statistics for applied research
 
-**Author: Doug Leasure**
-
 This two-day course provides a practical and accessible introduction to Bayesian statistics
 for applied research in any field. Students will benefit from a combination of lectures and
 discussion to explore fundamental concepts unlocking the potential to design bespoke
@@ -43,5 +41,7 @@ You will need to install the following free open-source software prior to doing 
 - <a href="https://mc-stan.org/cmdstanr/articles/cmdstanr.html" target="_blank">CmdStanR and its dependencies</a>
 
 ## License
-This repository is dual-licensed under MIT (code) and CC BY 4.0 (teaching materials). See the LICENSE file for details.
+This repository is dual-licensed under MIT (code) and CC BY 4.0 (teaching materials). See the LICENSE file for details.  
+Copyright (c) 2026. Real Good Research Ltd. [https://realgoodresearch.com](https://realgoodresearch.com)  
+
 
