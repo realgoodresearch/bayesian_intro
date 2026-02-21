@@ -28,7 +28,8 @@ pkgs <- c(
   "cmdstanr",
   "posterior",
   "bayesplot",
-  "tidyverse"
+  "tidyverse",
+  "tidybayes"
 )
 
 # install R packages
