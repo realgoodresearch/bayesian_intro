@@ -5,6 +5,7 @@ cat("\014")
 try(dev.off(), silent = T)
 
 # load libraries
+library(tools)
 library(cmdstanr)
 library(bayesplot)
 library(posterior)
@@ -13,6 +14,25 @@ library(tibble)
 library(dplyr)
 library(tidybayes)
 library(ggplot2)
+
+#---- USER OPTIONS ----#
+
+# select countries
+origin <- 'UA'
+destination <- 'DE'
+
+# identify last pre-treatment month
+treatment_month <- '2022-01'
+
+# select model file name
+model_name <- '6c_shrinkage'
+
+# expected donors to contribute to synthetic control
+# (only used for "shrinkage" models)
+expected_donors <- 5
+
+
+#---- configure directories ----#
 
 # check working directory
 # (it should be the root of the "bayesian_intro" github repository)
@@ -23,41 +43,35 @@ getwd()
 
 # directories
 basedir <- file.path(getwd(), "practicals", "6_synthetic_controls")
+
 outdir <- file.path(basedir, "results")
 dir.create(outdir, showWarnings = F, recursive = T)
 
-
-# set seed for random number generators (important for reproducibility)
-seed <- round(runif(1, 1, 1e6))
-set.seed(seed)
+model_outdir <- file.path(outdir, model_name)
+dir.create(model_outdir, showWarnings = F, recursive = T)
 
 
 #---- get data ----#
 
-# download Meta global migration data from the Humanitarian Data Exchange
-download.file(
-  "https://data.humdata.org/dataset/e09595bd-f4c5-4a66-8130-5a05f14d5e64/resource/67b2d6fc-ff4f-4d04-a75e-80e3de81b072/download/international_migration_flow.csv",
-  destfile = file.path(outdir, "data_meta_migration.csv")
-)
+dat_filename <- file.path(outdir, "data_meta_migration.csv")
+
+if (!file.exists(dat_filename)) {
+  # download Meta global migration data from the Humanitarian Data Exchange
+  download.file(
+    "https://data.humdata.org/dataset/e09595bd-f4c5-4a66-8130-5a05f14d5e64/resource/67b2d6fc-ff4f-4d04-a75e-80e3de81b072/download/international_migration_flow.csv",
+    destfile = dat_filename
+  )
+}
 
 # load data
-dat <- read.csv(file.path(outdir, "data_meta_migration.csv"))
-
-
-#---- USER OPTIONS ----#
-
-# select countries
-origin <- 'UA'
-destination <- 'GB'
-
-# identify last pre-treatment month
-treatment_month <- '2022-01'
-
-# select model file name
-model_name <- '6c_model_shrinkage.stan'
+dat <- read.csv(dat_filename)
 
 
 #---- setup data ----#
+
+# set seed for random number generators (important for reproducibility)
+seed <- round(runif(1, 1, 1e6))
+set.seed(seed)
 
 # identify "donor" countries for synthetic controls (ordered as numeric index)
 donors <- dat %>%
@@ -101,13 +115,21 @@ nrow(x_donors) == length(y_treated)
 nrow(x_donors) == length(months)
 ncol(x_donors) == length(donors)
 
+# rescale
+months_pre_treat <- months[months <= treatment_month]
+scalar <- x_donors[months_pre_treat, ] %>%
+  apply(2, mean)
+x_donors_scaled <- x_donors %>%
+  sweep(2, scalar, FUN = "/")
+
 # stan model data object
 md <- list(
   T = length(months),
   T0 = which(row.names(x_donors) == treatment_month),
   K = length(donors),
   y = y_treated,
-  x = x_donors,
+  x = x_donors_scaled,
+  n_donors = expected_donors,
   seed = seed
 ) # important to set and save seed for reproducibility
 
@@ -122,13 +144,18 @@ saveRDS(
 
 # function to generate initial values for each parameter in the model
 init_generator <- function(md = md, model_name = model_name, chain_id = 1) {
+  # inits used by all models
   result <- list(
     alpha = rnorm(1, log(mean(md$y[1:md$T0])), 0.1),
     weights = rep(1 / md$K, md$K)
   )
+
+  # addiitonal inits for negbin
   if (grepl("6b", model_name)) {
     result[['phi']] <- runif(1, 5, 15)
   }
+
+  # additional inits for horseshoe shrinkage
   if (grepl("6c", model_name)) {
     result[['weights']] <- NULL
     result[['weights_raw']] <- rep(1, md$K)
@@ -149,7 +176,7 @@ inits <- lapply(1:chains, function(id) {
 })
 
 # compile the stan model
-mod <- cmdstan_model(file.path(basedir, model_name))
+mod <- cmdstan_model(file.path(basedir, paste0(model_name, ".stan")))
 
 # run MCMC
 fit <- mod$sample(
@@ -158,34 +185,65 @@ fit <- mod$sample(
   init = inits,
   iter_sampling = samples,
   iter_warmup = warmup,
-  adapt_delta = 0.99, # default = 0.80
-  max_treedepth = 12, # deafult = 10
+  # adapt_delta = 0.99, # default = 0.80
+  # max_treedepth = 12, # deafult = 10
   seed = md$seed
 )
 
 # save model to disk
-fit$save_object(file = file.path(outdir, paste0("fit_", model_name, ".rds")))
+fit$save_object(
+  file = file.path(
+    model_outdir,
+    paste0("fit_", file_path_sans_ext(model_name), ".rds")
+  )
+)
 
 
 #---- model diagnostics ----#
 
-# list of vars to inspect
-potential_pars <- c("alpha", "phi")
-weight_pars_sample <- paste0("weights[", sample(1:md$K, min(12, md$K)), "]")
+# get and save fit summary
+fit_summary <- fit$summary()
 
-# 2. Check which ones actually exist in the fit metadata
-existing_vars <- fit$metadata()$variables
-target_pars <- c(intersect(potential_pars, existing_vars), weight_pars_sample)
-
-# traceplots to visually inspect MCMC chains
-bayesplot::mcmc_trace(
-  fit$draws(),
-  pars = target_pars[1:12]
+write.csv(
+  fit_summary,
+  file.path(
+    model_outdir,
+    "fit_summary.csv"
+  )
 )
 
-# Results and MCMC convergence diagnostic (r-hat); rhat < 1.01 means the chains converged (< 1.1 is okay for testing purposes)
-# (note: stan will return a warning automatically if there are MCMC problems)
-fit$summary(variables = target_pars)
+# posterior parameter estimates
+print(fit_summary)
+
+
+# check convergence for all parameters
+# rhat < 1.01 means the chains converged (< 1.1 is okay for testing purposes)
+fit_summary %>%
+  filter(rhat > 1.01) %>%
+  select(variable, rhat)
+
+# traceplots
+draws <- fit$draws()
+params <- fit$metadata()$variables
+
+pdf(
+  file.path(
+    model_outdir,
+    "traceplots.pdf"
+  ),
+  width = 11,
+  height = 8.5
+)
+
+plots_per_page <- 12
+for (i in seq(1, length(params), by = plots_per_page)) {
+  current_batch <- params[i:min(i + 11, length(params))]
+  p <- mcmc_trace(draws, pars = current_batch) +
+    facet_wrap(~parameter, ncol = 3, nrow = 4, scales = "free_y") +
+    ggtitle(paste("Parameters", i, "to", min(i + 11, length(params))))
+  print(p)
+}
+dev.off()
 
 #---- assess coverage ----#
 
@@ -206,6 +264,15 @@ coverage_rate <- mean(coverage_df$is_covered) * 100
 print(paste0("Pre-treatment Coverage: ", round(coverage_rate, 2), "%"))
 
 # visualise coverage
+pdf(
+  file.path(
+    model_outdir,
+    "coverage_plot.pdf"
+  ),
+  width = 11,
+  height = 8.5
+)
+
 ggplot(coverage_df, aes(x = t)) +
   geom_ribbon(aes(ymin = .lower, ymax = .upper), alpha = 0.2, fill = "blue") +
   geom_line(aes(y = y_rep), color = "blue", linetype = "dashed") +
@@ -217,11 +284,13 @@ ggplot(coverage_df, aes(x = t)) +
       round(coverage_rate, 1),
       "%)"
     ),
-    subtitle = "Red points fall outside the 95% prediction interval",
+    subtitle = "Red points fall outside the 95% prediction interval in the pre-treatment period",
     x = "Month Index",
     y = "Migration Count"
   ) +
   theme_minimal()
+
+dev.off()
 
 
 #---- synthetic controls plot ----#
@@ -267,6 +336,15 @@ treatment_date <- as.Date(paste0(months[md$T0], "-01"))
 
 ## plot reality and synthetic control
 
+pdf(
+  file.path(
+    model_outdir,
+    "synthetic_controls_plot.pdf"
+  ),
+  width = 11,
+  height = 8.5
+)
+
 ggplot(plot_df, aes(x = date)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), fill = "skyblue", alpha = 0.4) +
   geom_line(aes(y = y_hat, color = "Synthetic Control"), linetype = "dashed") +
@@ -280,8 +358,18 @@ ggplot(plot_df, aes(x = date)) +
   ylab('Migration flows (log scale)') +
   theme_minimal()
 
+dev.off()
+
 
 ## plot difference
+pdf(
+  file.path(
+    model_outdir,
+    "treatment_effect_plot.pdf"
+  ),
+  width = 11,
+  height = 8.5
+)
 
 ggplot(plot_df, aes(x = date)) +
   geom_ribbon(
@@ -298,6 +386,7 @@ ggplot(plot_df, aes(x = date)) +
   ) +
   theme_minimal()
 
+dev.off()
 
 #---- check shrinkage (i.e. dominant donors) ----#
 
@@ -317,7 +406,16 @@ if (grepl("shrink", model_name)) {
     slice_head(n = top_x)
 
   # Plot the top donors with names
-  ggplot(weights_summary, aes(x = reorder(donor_name, -mean), y = mean)) +
+  pdf(
+    file.path(
+      model_outdir,
+      "top_donors_plot.pdf"
+    ),
+    width = 11,
+    height = 8.5
+  )
+
+  p <- ggplot(weights_summary, aes(x = reorder(donor_name, -mean), y = mean)) +
     geom_bar(stat = "identity", fill = "steelblue", alpha = 0.8) +
     geom_errorbar(
       aes(ymin = q5, ymax = q95),
@@ -347,4 +445,8 @@ if (grepl("shrink", model_name)) {
       axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
       panel.grid.major.x = element_blank()
     )
+
+  print(p)
+
+  dev.off()
 }
