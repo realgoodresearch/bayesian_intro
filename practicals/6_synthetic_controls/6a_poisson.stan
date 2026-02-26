@@ -22,12 +22,11 @@ model {
   weights ~ dirichlet(rep_vector(1, K));
 }
 generated quantities {
-  vector[T] y_synthetic = lambda;
-  vector[T] effect = to_vector(y) - y_synthetic;
+  array[T] int y_synthetic;
+  array[T] int effect;
   
-  // posterior predictive check
-  array[T] int y_rep;
   for (t in 1 : T) {
-    y_rep[t] = poisson_rng(lambda[t]);
+    y_synthetic[t] = poisson_rng(lambda[t]);
+    effect[t] = y[t] - y_synthetic[t];
   }
 }

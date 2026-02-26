@@ -27,10 +27,6 @@ treatment_month <- '2022-01'
 # select model file name
 model_name <- '6c_shrinkage'
 
-# expected donors to contribute to synthetic control
-# (only used for "shrinkage" models)
-expected_donors <- 5
-
 
 #---- configure directories ----#
 
@@ -129,7 +125,6 @@ md <- list(
   K = length(donors),
   y = y_treated,
   x = x_donors_scaled,
-  n_donors = expected_donors,
   seed = seed
 ) # important to set and save seed for reproducibility
 
@@ -248,9 +243,9 @@ dev.off()
 #---- assess coverage ----#
 
 # get prediction intervals
-predictive_intervals <- fit$draws("y_rep", format = "df") %>%
-  spread_draws(y_rep[t]) %>%
-  median_qi(y_rep, .width = 0.95) %>% # Calculates 2.5% and 97.5% quantiles
+predictive_intervals <- fit$draws("y_synthetic", format = "df") %>%
+  spread_draws(y_synthetic[t]) %>%
+  median_qi(y_synthetic, .width = 0.95) %>% # Calculates 2.5% and 97.5% quantiles
   filter(t <= md$T0) # Only look at the pre-treatment period
 
 # join with observed data
@@ -275,7 +270,7 @@ pdf(
 
 ggplot(coverage_df, aes(x = t)) +
   geom_ribbon(aes(ymin = .lower, ymax = .upper), alpha = 0.2, fill = "blue") +
-  geom_line(aes(y = y_rep), color = "blue", linetype = "dashed") +
+  geom_line(aes(y = y_synthetic), color = "blue", linetype = "dashed") +
   geom_point(aes(y = observed, color = is_covered)) +
   scale_color_manual(values = c("TRUE" = "black", "FALSE" = "red")) +
   labs(
@@ -295,18 +290,16 @@ dev.off()
 
 #---- synthetic controls plot ----#
 
-## prepare data for plotting
-gen_quant_to_plot <- "y_rep"
-
-# extract the posterior means for y_synthetic or y_rep
+# extract the posterior predictions for y_synthetic
 draws_df <- fit$draws(
-  variables = gen_quant_to_plot,
+  variables = "y_synthetic",
   format = "df"
 )
 
+# summarise posterior predictions (mean, lower, upper)
 synth_draws <- draws_df %>%
   pivot_longer(
-    cols = starts_with(gen_quant_to_plot),
+    cols = starts_with("y_synthetic"),
     names_to = "parameter",
     values_to = "value"
   ) %>%
@@ -323,7 +316,7 @@ synth_draws <- draws_df %>%
 # observed (real) data
 real_data <- data.frame(
   date = row.names(md$x),
-  y_obs = y_treated
+  y_obs = md$y
 )
 
 # data for plot
@@ -390,63 +383,61 @@ dev.off()
 
 #---- check shrinkage (i.e. dominant donors) ----#
 
-if (grepl("shrink", model_name)) {
-  # Set your threshold
-  top_x <- 10
+# Set your threshold
+top_x <- 10
 
-  # Summarize weights and map names
-  weights_summary <- fit$summary("weights") %>%
-    mutate(
-      donor_index = 1:n(),
-      # Map the index to the name in the 'donors' object
-      donor_name = donors[donor_index]
-    ) %>%
-    arrange(desc(mean)) %>%
-    mutate(cumulative_weight = cumsum(mean)) %>%
-    slice_head(n = top_x)
+# Summarize weights and map names
+weights_summary <- fit$summary("weights") %>%
+  mutate(
+    donor_index = 1:n(),
+    # Map the index to the name in the 'donors' object
+    donor_name = donors[donor_index]
+  ) %>%
+  arrange(desc(mean)) %>%
+  mutate(cumulative_weight = cumsum(mean)) %>%
+  slice_head(n = top_x)
 
-  # Plot the top donors with names
-  pdf(
-    file.path(
-      model_outdir,
-      "top_donors_plot.pdf"
+# Plot the top donors with names
+pdf(
+  file.path(
+    model_outdir,
+    "top_donors_plot.pdf"
+  ),
+  width = 11,
+  height = 8.5
+)
+
+p <- ggplot(weights_summary, aes(x = reorder(donor_name, -mean), y = mean)) +
+  geom_bar(stat = "identity", fill = "steelblue", alpha = 0.8) +
+  geom_errorbar(
+    aes(ymin = q5, ymax = q95),
+    width = 0.2,
+    color = "firebrick"
+  ) +
+  geom_text(aes(label = round(mean, 3)), vjust = -1.2, size = 3.5) +
+  labs(
+    title = paste(
+      "Top",
+      top_x,
+      "donors for synthetic",
+      origin,
+      "->",
+      destination
     ),
-    width = 11,
-    height = 8.5
+    subtitle = paste0(
+      paste0("Total weight of top ", top_x, " donors: "),
+      round(max(weights_summary$cumulative_weight) * 100, 1),
+      "%"
+    ),
+    x = NULL, # Remove axis label as names are self-explanatory
+    y = "Posterior Weight (Mean)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    panel.grid.major.x = element_blank()
   )
 
-  p <- ggplot(weights_summary, aes(x = reorder(donor_name, -mean), y = mean)) +
-    geom_bar(stat = "identity", fill = "steelblue", alpha = 0.8) +
-    geom_errorbar(
-      aes(ymin = q5, ymax = q95),
-      width = 0.2,
-      color = "firebrick"
-    ) +
-    geom_text(aes(label = round(mean, 3)), vjust = -1.2, size = 3.5) +
-    labs(
-      title = paste(
-        "Top",
-        top_x,
-        "donors for synthetic",
-        origin,
-        "->",
-        destination
-      ),
-      subtitle = paste0(
-        "Horseshoe Shrinkage | Total weight: ",
-        round(max(weights_summary$cumulative_weight) * 100, 1),
-        "%"
-      ),
-      x = NULL, # Remove axis label as names are self-explanatory
-      y = "Posterior Weight (Mean)"
-    ) +
-    theme_minimal() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
-      panel.grid.major.x = element_blank()
-    )
+print(p)
 
-  print(p)
-
-  dev.off()
-}
+dev.off()

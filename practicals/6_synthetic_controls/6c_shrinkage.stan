@@ -17,18 +17,18 @@ parameters {
   real<lower=0> global_scale;
 }
 transformed parameters {
-  vector[T] lambda;
+  vector[T] mu;
   vector<lower=0>[K] weights_shrunk;
   simplex[K] weights;
   
   weights_shrunk = weights_raw .* local_scales * global_scale;
   weights = weights_shrunk / sum(weights_shrunk);
   
-  lambda = exp(alpha) .* (x * weights);
+  mu = exp(alpha) .* (x * weights);
 }
 model {
   // likelihood
-  y[1 : T0] ~ neg_binomial_2(lambda[1 : T0], phi);
+  y[1 : T0] ~ neg_binomial_2(mu[1 : T0], phi);
   
   // priors
   alpha ~ normal(0, 10);
@@ -39,12 +39,11 @@ model {
   global_scale ~ cauchy(0, 1);
 }
 generated quantities {
-  vector[T] y_synthetic = lambda;
-  vector[T] effect = to_vector(y) - y_synthetic;
+  array[T] int y_synthetic;
+  array[T] int effect;
   
-  // posterior predictive check
-  array[T] int y_rep;
   for (t in 1 : T) {
-    y_rep[t] = neg_binomial_2_rng(lambda[t], phi);
+    y_synthetic[t] = neg_binomial_2_rng(mu[t], phi);
+    effect[t] = y[t] - y_synthetic[t];
   }
 }

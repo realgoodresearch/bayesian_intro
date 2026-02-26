@@ -11,13 +11,13 @@ parameters {
   real phi;
 }
 transformed parameters {
-  vector[T] lambda;
+  vector[T] mu;
   
-  lambda = exp(alpha) .* (x * weights);
+  mu = exp(alpha) .* (x * weights);
 }
 model {
   // likelihood
-  y[1 : T0] ~ neg_binomial_2(lambda[1 : T0], phi);
+  y[1 : T0] ~ neg_binomial_2(mu[1 : T0], phi);
   
   // priors
   weights ~ dirichlet(rep_vector(1, K));
@@ -26,12 +26,11 @@ model {
   phi ~ exponential(0.1);
 }
 generated quantities {
-  vector[T] y_synthetic = lambda;
-  vector[T] effect = to_vector(y) - y_synthetic;
+  array[T] int y_synthetic;
+  array[T] int effect;
   
-  // posterior predictive check
-  array[T] int y_rep;
   for (t in 1 : T) {
-    y_rep[t] = neg_binomial_2_rng(lambda[t], phi);
+    y_synthetic[t] = neg_binomial_2_rng(mu[t], phi);
+    effect[t] = y[t] - y_synthetic[t];
   }
 }
